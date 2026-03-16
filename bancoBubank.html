@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>BUbank</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:linear-gradient(135deg,#6a00ff,#b100ff);
+height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+color:#333;
+}
+
+.card{
+background:white;
+width:340px;
+border-radius:20px;
+padding:20px;
+box-shadow:0 10px 30px rgba(0,0,0,0.2);
+}
+
+.topo{
+background:linear-gradient(135deg,#7a00ff,#a200ff);
+color:white;
+padding:15px;
+border-radius:15px;
+margin-bottom:15px;
+}
+
+.menu{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:8px;
+}
+
+button{
+padding:10px;
+border:none;
+border-radius:10px;
+background:#7a00ff;
+color:white;
+cursor:pointer;
+}
+
+button:hover{
+background:#5a00c4;
+}
+
+input,select{
+width:100%;
+padding:8px;
+margin-top:5px;
+border-radius:8px;
+border:1px solid #ccc;
+}
+
+.area{
+background:#f4f4f4;
+padding:10px;
+border-radius:10px;
+margin-top:10px;
+max-height:220px;
+overflow:auto;
+}
+
+.chat{
+height:120px;
+overflow:auto;
+background:white;
+border-radius:8px;
+padding:5px;
+margin-bottom:5px;
+}
+
+.aviso{
+position:fixed;
+bottom:10px;
+right:10px;
+background:black;
+color:white;
+padding:8px;
+font-size:12px;
+border-radius:6px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="card" id="login">
+
+<h2>BUbank</h2>
+
+<input id="nome" placeholder="Nome">
+<input id="senha" type="password" placeholder="Senha">
+
+<button onclick="login()">Entrar / Criar</button>
+
+</div>
+
+
+<div class="card" id="app" style="display:none">
+
+<div class="topo">
+Olá, <span id="user"></span><br>
+Saldo: R$ <span id="saldo"></span>
+</div>
+
+<div class="menu">
+
+<button onclick="mostrar('pix')">PIX</button>
+<button onclick="mostrar('transferir')">Transferir</button>
+
+<button onclick="mostrar('caixa')">Caixinhas</button>
+<button onclick="mostrar('investir')">Investir</button>
+
+<button onclick="mostrar('codigo')">Código</button>
+<button onclick="mostrar('chat')">Chat</button>
+
+<button onclick="mostrar('historico')">Histórico</button>
+
+</div>
+
+<div id="conteudo"></div>
+
+</div>
+
+<div class="aviso">
+BUbank é um jogo fictício para diversão.
+</div>
+
+<script>
+
+let usuarios = JSON.parse(localStorage.getItem("bubankUsers")) || {}
+let chat = JSON.parse(localStorage.getItem("bubankChat")) || []
+let usuarioAtual=null
+let tempoCodigo=0
+
+function salvar(){
+localStorage.setItem("bubankUsers",JSON.stringify(usuarios))
+localStorage.setItem("bubankChat",JSON.stringify(chat))
+}
+
+function login(){
+
+let nome=document.getElementById("nome").value
+let senha=document.getElementById("senha").value
+
+if(!usuarios[nome]){
+usuarios[nome]={senha:senha,saldo:0,caixa:0,historico:[]}
+}
+
+if(usuarios[nome].senha!==senha){
+alert("Senha incorreta")
+return
+}
+
+usuarioAtual=nome
+
+document.getElementById("login").style.display="none"
+document.getElementById("app").style.display="block"
+
+document.getElementById("user").innerText=nome
+
+atualizarSaldo()
+}
+
+function atualizarSaldo(){
+document.getElementById("saldo").innerText=usuarios[usuarioAtual].saldo.toFixed(2)
+salvar()
+}
+
+function historico(texto){
+usuarios[usuarioAtual].historico.push(texto)
+salvar()
+}
+
+function mostrar(tipo){
+
+let div=document.getElementById("conteudo")
+
+if(tipo=="pix"){
+div.innerHTML=`
+<div class="area">
+<h3>PIX fictício</h3>
+<input id="pixvalor" placeholder="Valor">
+<button onclick="pix()">Receber</button>
+</div>`
+}
+
+if(tipo=="transferir"){
+
+let lista=""
+
+for(let u in usuarios){
+if(u!==usuarioAtual){
+lista+=`<option>${u}</option>`
+}
+}
+
+div.innerHTML=`
+<div class="area">
+<h3>Transferir</h3>
+<select id="destino">${lista}</select>
+<input id="valorT" placeholder="Valor">
+<button onclick="transferir()">Enviar</button>
+</div>`
+}
+
+if(tipo=="caixa"){
+div.innerHTML=`
+<div class="area">
+<h3>Caixinhas</h3>
+Guardado: R$ ${usuarios[usuarioAtual].caixa.toFixed(2)}
+<input id="valorC" placeholder="Valor">
+<button onclick="guardar()">Guardar</button>
+</div>`
+}
+
+if(tipo=="investir"){
+div.innerHTML=`
+<div class="area">
+<h3>Investimento</h3>
+<input id="valorI" placeholder="Valor">
+<button onclick="investir()">Investir</button>
+</div>`
+}
+
+if(tipo=="codigo"){
+div.innerHTML=`
+<div class="area">
+<h3>Código de dinheiro</h3>
+<button onclick="gerarCodigo()">Gerar</button>
+<div id="codigo"></div>
+</div>`
+}
+
+if(tipo=="chat"){
+
+let msgs=""
+chat.forEach(m=>{
+msgs+=`<div><b>${m.user}:</b> ${m.msg}</div>`
+})
+
+div.innerHTML=`
+<div class="area">
+<h3>Chat</h3>
+<div class="chat" id="chatbox">${msgs}</div>
+<input id="msg">
+<button onclick="enviarMsg()">Enviar</button>
+</div>`
+}
+
+if(tipo=="historico"){
+
+let h=usuarios[usuarioAtual].historico
+let txt=""
+
+h.forEach(i=>txt+=`<div>${i}</div>`)
+
+div.innerHTML=`
+<div class="area">
+<h3>Histórico</h3>
+${txt}
+</div>`
+}
+
+}
+
+function pix(){
+let v=parseFloat(document.getElementById("pixvalor").value)
+usuarios[usuarioAtual].saldo+=v
+historico("Recebeu PIX de R$ "+v)
+atualizarSaldo()
+}
+
+function transferir(){
+
+let dest=document.getElementById("destino").value
+let v=parseFloat(document.getElementById("valorT").value)
+
+if(usuarios[usuarioAtual].saldo<v){
+alert("Saldo insuficiente")
+return
+}
+
+usuarios[usuarioAtual].saldo-=v
+usuarios[dest].saldo+=v
+
+historico("Transferiu R$ "+v+" para "+dest)
+
+atualizarSaldo()
+
+alert("Transferência feita")
+}
+
+function guardar(){
+
+let v=parseFloat(document.getElementById("valorC").value)
+
+if(usuarios[usuarioAtual].saldo<v){
+alert("Saldo insuficiente")
+return
+}
+
+usuarios[usuarioAtual].saldo-=v
+usuarios[usuarioAtual].caixa+=v
+
+historico("Guardou R$ "+v+" na caixinha")
+
+atualizarSaldo()
+
+}
+
+function investir(){
+
+let v=parseFloat(document.getElementById("valorI").value)
+
+if(usuarios[usuarioAtual].saldo<v){
+alert("Saldo insuficiente")
+return
+}
+
+usuarios[usuarioAtual].saldo-=v
+
+let lucro=v*(Math.random()*0.4)
+
+usuarios[usuarioAtual].saldo+=v+lucro
+
+historico("Investiu R$ "+v+" retorno "+(v+lucro).toFixed(2))
+
+alert("Retorno R$ "+(v+lucro).toFixed(2))
+
+atualizarSaldo()
+}
+
+function gerarCodigo(){
+
+let agora=Date.now()
+
+if(agora-tempoCodigo<150000){
+alert("Espere 2m30 para gerar outro código")
+return
+}
+
+tempoCodigo=agora
+
+let codigo=Math.floor(100000000+Math.random()*900000000)
+let valor=(Math.random()*10000).toFixed(2)
+
+document.getElementById("codigo").innerHTML=
+`Código: ${codigo}<br>Valor: R$ ${valor}`
+
+usuarios[usuarioAtual].saldo+=parseFloat(valor)
+
+historico("Código usado: +R$ "+valor)
+
+atualizarSaldo()
+
+}
+
+function enviarMsg(){
+
+let m=document.getElementById("msg").value
+
+chat.push({user:usuarioAtual,msg:m})
+
+salvar()
+
+mostrar("chat")
+
+}
+
+</script>
+
+</body>
+</html>
